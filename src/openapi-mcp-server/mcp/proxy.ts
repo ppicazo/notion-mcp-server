@@ -5,6 +5,7 @@ import { OpenAPIToMCPConverter } from '../openapi/parser'
 import { HttpClient, HttpClientError } from '../client/http-client'
 import { OpenAPIV3 } from 'openapi-types'
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
+import { AsyncLocalStorage } from 'async_hooks'
 
 type PathItemObject = OpenAPIV3.PathItemObject & {
   get?: OpenAPIV3.OperationObject
@@ -29,9 +30,11 @@ export class MCPProxy {
   private httpClient: HttpClient
   private tools: Record<string, NewToolDefinition>
   private openApiLookup: Record<string, OpenAPIV3.OperationObject & { method: string; path: string }>
+  private authStorage?: AsyncLocalStorage<Record<string, string>>
 
-  constructor(name: string, openApiSpec: OpenAPIV3.Document) {
+  constructor(name: string, openApiSpec: OpenAPIV3.Document, authStorage?: AsyncLocalStorage<Record<string, string>>) {
     this.server = new Server({ name, version: '1.0.0' }, { capabilities: { tools: {} } })
+    this.authStorage = authStorage
     const baseUrl = openApiSpec.servers?.[0].url
     if (!baseUrl) {
       throw new Error('No base URL found in OpenAPI spec')
@@ -85,8 +88,17 @@ export class MCPProxy {
       }
 
       try {
-        // Execute the operation
-        const response = await this.httpClient.executeOperation(operation, params)
+        // Get dynamic authentication headers from async local storage
+        const dynamicHeaders = this.authStorage?.getStore() || {}
+        
+        // Merge with environment-based headers (dynamic headers take precedence)
+        const authHeaders = {
+          ...this.parseHeadersFromEnv(),
+          ...dynamicHeaders
+        }
+
+        // Execute the operation with dynamic headers
+        const response = await this.httpClient.executeOperation(operation, params, authHeaders)
 
         // Convert response to MCP format
         return {

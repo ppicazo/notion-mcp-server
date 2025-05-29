@@ -129,6 +129,46 @@ Add a page titled "Notion MCP" to page "Development"
 Get the content of page 1a6b35e6e67f802fa7e1d27686f017f2
 ```
 
+##### Using HTTP Transport (Serverless/Cloud Deployment):
+
+The Notion MCP Server now supports HTTP transport, enabling deployment on serverless platforms like Google Cloud Run, AWS Lambda, Vercel, and more.
+
+**Quick Start:**
+```bash
+# Start HTTP server locally
+npm run dev:http
+
+# Server runs on http://localhost:3000
+# MCP endpoint: http://localhost:3000/mcp
+# Health check: http://localhost:3000/health
+```
+
+**Client Configuration:**
+```javascript
+{
+  "mcpServers": {
+    "notionApi": {
+      "command": "node",
+      "args": ["-e", `
+        const { StreamableHTTPClientTransport } = require('@modelcontextprotocol/sdk/client/streamableHttp.js');
+        const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
+        
+        const transport = new StreamableHTTPClientTransport(new URL('https://your-server.com/mcp'));
+        const client = new Client({ name: 'notion-client', version: '1.0.0' }, { capabilities: {} });
+        client.connect(transport);
+      `]
+    }
+  }
+}
+```
+
+**Deployment Options:**
+- **Google Cloud Run:** See [examples/http-deployment.md](examples/http-deployment.md)
+- **Docker:** `docker-compose -f docker-compose.http.yml up`
+- **Vercel/Railway:** Platform-specific configurations available
+
+For detailed HTTP transport documentation, see [docs/HTTP_TRANSPORT.md](docs/HTTP_TRANSPORT.md).
+
 ### Development
 
 Build
@@ -137,10 +177,22 @@ Build
 npm run build
 ```
 
-Execute
+Execute (stdio transport)
 
 ```
 npx -y --prefix /path/to/local/notion-mcp-server @notionhq/notion-mcp-server
+```
+
+Execute (HTTP transport)
+
+```
+npm run dev:http
+```
+
+Test HTTP transport
+
+```
+npm run test:http
 ```
 
 Publish

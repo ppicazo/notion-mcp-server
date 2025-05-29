@@ -1,10 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { AsyncLocalStorage } from 'async_hooks'
 
 import { OpenAPIV3 } from 'openapi-types'
 import OpenAPISchemaValidator from 'openapi-schema-validator'
 
-import { MCPProxy } from './openapi-mcp-server/mcp/proxy'
+import { NotionMCPProxy } from './notion-proxy.js'
 
 export class ValidationError extends Error {
   constructor(public errors: any[]) {
@@ -42,9 +43,9 @@ async function loadOpenApiSpec(specPath: string, baseUrl: string | undefined): P
   }
 }
 
-export async function initProxy(specPath: string, baseUrl: string |undefined) {
+export async function initProxy(specPath: string, baseUrl: string | undefined, authStorage?: AsyncLocalStorage<Record<string, string>>) {
   const openApiSpec = await loadOpenApiSpec(specPath, baseUrl)
-  const proxy = new MCPProxy('Notion API', openApiSpec)
+  const proxy = new NotionMCPProxy(openApiSpec, authStorage || new AsyncLocalStorage<Record<string, string>>())
 
   return proxy
 }

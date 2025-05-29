@@ -104,6 +104,7 @@ export class HttpClient {
   async executeOperation<T = any>(
     operation: OpenAPIV3.OperationObject & { method: string; path: string },
     params: Record<string, any> = {},
+    additionalHeaders?: Record<string, string>
   ): Promise<HttpClientResponse<T>> {
     const api = await this.api
     const operationId = operation.operationId
@@ -150,16 +151,32 @@ export class HttpClient {
     }
 
     try {
+      // Clean up bodyParams by removing empty objects to avoid API validation errors
+      if (!formData && bodyParams && typeof bodyParams === 'object') {
+        for (const [key, value] of Object.entries(bodyParams)) {
+          if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
+            console.log(`🧹 Removing empty object for parameter: ${key}`)
+            delete bodyParams[key]
+          }
+        }
+      }
+
       // If we have form data, we need to set the correct headers
       const hasBody = Object.keys(bodyParams).length > 0
       const headers = formData
         ? formData.getHeaders()
         : { ...(hasBody ? { 'Content-Type': 'application/json' } : { 'Content-Type': null }) }
+      
       const requestConfig = {
         headers: {
           ...headers,
+          ...(additionalHeaders || {}), // Include additional headers passed from the proxy
         },
       }
+
+      console.log('🌐 Making API request to:', operation.method.toUpperCase(), operation.path)
+      console.log('🔐 Request headers:', requestConfig.headers)
+      console.log('📦 Request body params:', bodyParams)
 
       // first argument is url parameters, second is body parameters
       const response = await operationFn(urlParameters, hasBody ? bodyParams : undefined, requestConfig)
