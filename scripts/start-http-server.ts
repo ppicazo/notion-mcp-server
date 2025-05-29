@@ -45,7 +45,7 @@ export async function startHttpServer(port: number = 3000) {
   
   try {
     const server = await createServer()
-    const httpServer = startHttpTransport(server, port)
+    const httpServer = startHttpTransport(server, port, "0.0.0.0")
     
     // Graceful shutdown
     const handleShutdown = async () => {
@@ -72,7 +72,7 @@ export async function startHttpServer(port: number = 3000) {
 }
 
 // Start the server if this file is run directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// if (import.meta.url === `file://${process.argv[1]}`) {
   const port = process.env.PORT ? parseInt(process.env.PORT) : 3000
   startHttpServer(port)
-}
+// }
